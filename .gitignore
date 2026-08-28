@@ -41,6 +41,9 @@ dist/
 # Django collected static files
 staticfiles/
 
+# Kubernetes secret with real values (use k8s/secret.example.yaml as a template)
+k8s/secret.yaml
+
 # JetBrains IDEs
 *.iml
 .idea/

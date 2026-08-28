@@ -60,3 +60,51 @@ This is a simple and clean TODO List web application built with **Django**. It a
     ```bash
     python manage.py loaddata fixture_data.json
     ```
+
+## ☸️ Kubernetes
+
+Manifests live in `k8s/`. The app reads its configuration from environment
+variables (see `to_do/settings.py`): non-sensitive values come from a
+`ConfigMap`, sensitive ones from a `Secret`.
+
+### Secret
+
+`k8s/secret.yaml` holds the sensitive values and is **git-ignored** — never
+commit it. Use `k8s/secret.example.yaml` as a template:
+
+```bash
+cp k8s/secret.example.yaml k8s/secret.yaml
+# then edit k8s/secret.yaml and fill in real values
+```
+
+Required keys (`Secret` name: `todo-secrets`, namespace: `todo`, type `Opaque`):
+
+| Key                 | Description                                              |
+|---------------------|--------------------------------------------------------|
+| `DJANGO_SECRET_KEY` | Long random string, e.g. `python -c "import secrets; print(secrets.token_urlsafe(50))"` |
+| `POSTGRES_USER`     | Database user (`todo`)                                  |
+| `POSTGRES_PASSWORD` | Database password                                       |
+| `POSTGRES_DB`       | Database name (`todo`)                                  |
+
+Example (`k8s/secret.example.yaml`, placeholder values only):
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: todo-secrets
+  namespace: todo
+type: Opaque
+stringData:
+  DJANGO_SECRET_KEY: "replace-with-random-secret"
+  POSTGRES_USER: "todo"
+  POSTGRES_PASSWORD: "replace-with-strong-password"
+  POSTGRES_DB: "todo"
+```
+
+Apply:
+
+```bash
+kubectl apply -f k8s/secret.yaml
+kubectl get secret todo-secrets -n todo
+```
