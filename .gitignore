@@ -38,6 +38,9 @@ build/
 dist/
 *.egg-info/
 
+# Django collected static files
+staticfiles/
+
 # JetBrains IDEs
 *.iml
 .idea/

@@ -1,0 +1,35 @@
+# VCS
+.git
+.gitignore
+
+# Docker / k8s
+Dockerfile
+.dockerignore
+k8s/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Local DB / logs
+*.sqlite3
+db.sqlite3
+*.log
+
+# Collected static (rebuilt inside the image)
+staticfiles/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
