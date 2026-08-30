@@ -6,8 +6,19 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
+  # named host — works once "127.0.0.1 todo.local" is in the hosts file
   - host: todo.local
     http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: todo-web
+            port:
+              number: 80
+  # no host — catch-all, lets http://localhost/ reach the app without DNS
+  - http:
       paths:
       - pathType: Prefix
         path: "/"

@@ -113,4 +113,5 @@ fi
 step "Done"
 kubectl -n "$NS" get pods,svc,ingress
 echo
-echo "open http://todo.local/   (needs '127.0.0.1 todo.local' in your hosts file)"
+echo "open http://localhost/       (via the catch-all Ingress rule)"
+echo "  or http://todo.local/      (needs '127.0.0.1 todo.local' in your hosts file)"
