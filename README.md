@@ -81,7 +81,7 @@ a `ConfigMap`, sensitive ones from a `Secret`.
 | `migrate-job.yaml` | Job | runs `manage.py migrate` once |
 | `web-deployment.yaml` | Deployment | Django app, 3 replicas |
 | `web-service.yaml` | Service (ClusterIP) | `todo-web:80` → pods `:8000` |
-| `ingress.yaml` | Ingress | `todo.local` → `todo-web` |
+| `ingress.yaml` | Ingress | `todo.local` **and** `http://localhost/` → `todo-web` |
 | `hpa.yaml` | HorizontalPodAutoscaler | scale web 3→6 at 70% CPU (optional) |
 | `deploy.sh` | script | applies all of the above in order (see [Deploy](#deploy)) |
 
@@ -141,10 +141,10 @@ stringData:
 
 ### Ingress controller
 
-`k8s/ingress.yaml` only *describes* a routing rule (host `todo.local` →
-Service `todo-web`). The component that reads that rule and serves HTTP traffic
-is the **Ingress controller** — a cluster-wide reverse proxy that is **not**
-part of this app and is installed separately, once per cluster.
+`k8s/ingress.yaml` only *describes* routing rules. The component that reads them
+and serves HTTP traffic is the **Ingress controller** — a cluster-wide reverse
+proxy that is **not** part of this app and is installed separately, once per
+cluster.
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
@@ -154,13 +154,18 @@ kubectl wait --namespace ingress-nginx \
   --timeout=120s
 ```
 
-Point `todo.local` at localhost by adding this line to your hosts file
-(`C:\Windows\System32\drivers\etc\hosts` on Windows, `/etc/hosts` on
-Linux/macOS):
+On Docker Desktop the controller binds to `localhost:80`. The Ingress has two
+rules:
 
-```
-127.0.0.1 todo.local
-```
+- a **catch-all** rule (no host) — so `http://localhost/` reaches the app with
+  no extra setup;
+- a **named host** `todo.local` — nicer, but the browser needs to resolve it.
+  Add this line to your hosts file (`C:\Windows\System32\drivers\etc\hosts` on
+  Windows — edit as Administrator, `/etc/hosts` on Linux/macOS):
+
+  ```
+  127.0.0.1 todo.local
+  ```
 
 ### Deploy
 
@@ -209,8 +214,18 @@ kubectl apply -f k8s/ingress.yaml
 kubectl get all,ingress,pvc -n todo
 kubectl get pods -n todo -o wide            # postgres-0 + 3x todo-web, all Running / READY
 kubectl logs -n todo deploy/todo-web --tail=20
-kubectl get ingress -n todo                 # HOSTS=todo.local, ADDRESS set
-curl http://todo.local/                     # HTML of the task list
+kubectl get ingress -n todo                 # HOSTS, ADDRESS set
+
+curl http://localhost/                      # via the catch-all Ingress rule — HTML of the task list
+curl http://todo.local/                     # via the named host — needs the hosts entry
+```
+
+If the Ingress controller is not available, reach a pod directly with a
+port-forward (pick any free local port — `8080` is often taken):
+
+```bash
+kubectl port-forward -n todo svc/todo-web 8888:80
+# then open http://localhost:8888/
 ```
 
 ### Common operations
@@ -280,7 +295,8 @@ kubectl get hpa -n todo -w                  # TARGETS e.g. "cpu: 2%/70%"
 | `todo-web` pods stuck `0/1 Running` | readiness probe fails — check the `Host: todo.local` header is set and `todo.local` is in `DJANGO_ALLOWED_HOSTS` |
 | Pods `CrashLoopBackOff` | DB unreachable or migrations not run — check `kubectl logs`, confirm `todo-migrate` completed |
 | `todo-migrate` retries / fails | Postgres not ready yet — it retries up to `backoffLimit: 3`; check `postgres-0` logs |
-| `curl http://todo.local/` → connection refused | Ingress controller not installed/ready, or missing `127.0.0.1 todo.local` in hosts |
+| `todo.local` → `DNS_PROBE_FINISHED_NXDOMAIN` | missing `127.0.0.1 todo.local` in hosts — or just use `http://localhost/` |
+| `http://localhost/` → connection refused | Ingress controller not installed / not ready |
 | Ingress `404` from nginx | `ingressClassName` mismatch, or the Ingress is in a different namespace than expected |
 | `kubectl get hpa` shows `<unknown>/70%` | metrics-server missing or not ready |
 | `ImagePullBackOff` | image not built locally (Docker Desktop) or not pushed (remote cluster) |
